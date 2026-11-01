@@ -5,6 +5,21 @@ public class MiniBank {
         BankInfo bankInfo = new BankInfo("MiniBank", "Main Branch");
         System.out.println(bankInfo);
 
+        Account[] accounts = {
+            new Account("Asha Patel", 1000),
+            new Account("Ravi Shah"),
+            new Account("Neha Desai", 2500)
+        };
+        accounts[0].deposit(500);
+        accounts[0].withdraw(200);
+        accounts[1].deposit(750);
+        accounts[2].withdraw(300);
+
+        System.out.println("Account balances:");
+        for (Account account : accounts) {
+            System.out.println(account.getOwnerName() + ": Rs. " + account.getBalance());
+        }
+
         try (Scanner scanner = new Scanner(System.in)) {
             while (true) {
                 System.out.println();
