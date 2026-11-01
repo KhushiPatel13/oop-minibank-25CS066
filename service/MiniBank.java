@@ -12,11 +12,12 @@ import model.FixedDepositAccount;
 import model.MenuOption;
 import model.SavingsAccount;
 import model.WithdrawRule;
+import util.AnnotationValidator;
 import util.CommandParser;
 import util.Validator;
 
 public class MiniBank {
-    public static void main(String[] args) {
+    public static void main(String[] args) throws ReflectiveOperationException {
         BankInfo bankInfo = new BankInfo("MiniBank", "Main Branch");
         System.out.println(bankInfo);
 
@@ -66,6 +67,14 @@ public class MiniBank {
         System.out.println("Parsed command: " + command.type() + ", "
                 + command.accountNumber() + ", " + command.amount());
         System.out.println(buildStatement(accounts[0]));
+
+        Account invalidAccount = new SavingsAccount("Validation sample", 100, 0);
+        var balanceField = Account.class.getDeclaredField("balance");
+        balanceField.setAccessible(true);
+        balanceField.setLong(invalidAccount, -1);
+        for (String error : AnnotationValidator.validate(invalidAccount)) {
+            System.out.println("Annotation validation error: " + error);
+        }
 
         try (Scanner scanner = new Scanner(System.in)) {
             while (true) {
