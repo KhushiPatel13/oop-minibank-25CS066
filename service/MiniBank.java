@@ -20,9 +20,28 @@ import util.CommandParser;
 import util.Validator;
 
 public class MiniBank {
-    public static void main(String[] args) throws ReflectiveOperationException {
+    public static void main(String[] args)
+            throws ReflectiveOperationException, InterruptedException {
         BankInfo bankInfo = new BankInfo("MiniBank", "Main Branch");
         System.out.println(bankInfo);
+
+        Account sharedAccount = new CurrentAccount("Concurrent Demo", 0, 0);
+        int workerCount = 10;
+        int depositsPerWorker = 10_000;
+        long amountPerDeposit = 1;
+        Thread[] workers = new Thread[workerCount];
+        for (int i = 0; i < workers.length; i++) {
+            workers[i] = new Thread(
+                    new AccountWorker(sharedAccount, depositsPerWorker, amountPerDeposit),
+                    "AccountWorker-" + (i + 1));
+            workers[i].start();
+        }
+        for (Thread worker : workers) {
+            worker.join();
+        }
+        long expectedBalance = (long) workerCount * depositsPerWorker * amountPerDeposit;
+        System.out.println("Concurrent balance: Rs. " + sharedAccount.getBalance()
+                + " (expected Rs. " + expectedBalance + ")");
 
         Account[] accounts = {
             new SavingsAccount("Asha Patel", 1000, 500),
