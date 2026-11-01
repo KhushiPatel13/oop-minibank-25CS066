@@ -22,6 +22,21 @@ public class MiniBank {
         System.out.println("First two accounts equal: " + accounts[0].equals(accounts[1]));
         System.out.println("First object is an Account: " + (accounts[0] instanceof Account));
 
+        System.out.println("Validation examples:");
+        System.out.println("Mobile: " + Validator.isValidMobile("9876543210")
+                + " / " + Validator.isValidMobile("12345"));
+        System.out.println("Email: " + Validator.isValidEmail("asha@example.com")
+                + " / " + Validator.isValidEmail("not-an-email"));
+        System.out.println("PAN: " + Validator.isValidPan("ABCDE1234F")
+                + " / " + Validator.isValidPan("bad-pan"));
+        System.out.println("IFSC: " + Validator.isValidIfsc("SBIN0001234")
+                + " / " + Validator.isValidIfsc("bad-ifsc"));
+
+        Command command = CommandParser.parse("DEPOSIT AC0001 500");
+        System.out.println("Parsed command: " + command.type() + ", "
+                + command.accountNumber() + ", " + command.amount());
+        System.out.println(StatementFormatter.buildStatement(accounts[0]));
+
         try (Scanner scanner = new Scanner(System.in)) {
             while (true) {
                 System.out.println();
