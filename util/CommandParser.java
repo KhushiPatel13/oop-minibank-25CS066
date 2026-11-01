@@ -1,3 +1,8 @@
+package util;
+
+import model.Command;
+import model.TransactionType;
+
 public class CommandParser {
     private CommandParser() {}
 

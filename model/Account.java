@@ -1,4 +1,6 @@
-public abstract class Account {
+package model;
+
+public abstract class Account implements Transactable, InterestBearing {
     private final String accountNumber;
     private String ownerName;
     private long balance;
@@ -25,6 +27,7 @@ public abstract class Account {
         return String.format("AC%04d", ++accountCounter);
     }
 
+    @Override
     public void deposit(long amount) {
         if (amount <= 0) {
             throw new IllegalArgumentException("Deposit amount must be positive.");
@@ -32,6 +35,7 @@ public abstract class Account {
         balance = Math.addExact(balance, amount);
     }
 
+    @Override
     public boolean withdraw(long amount) {
         if (amount <= 0) {
             throw new IllegalArgumentException("Withdrawal amount must be positive.");

@@ -1,4 +1,19 @@
+package service;
+
+import static util.StatementFormatter.buildStatement;
+
 import java.util.Scanner;
+
+import model.Account;
+import model.BankInfo;
+import model.Command;
+import model.CurrentAccount;
+import model.FixedDepositAccount;
+import model.MenuOption;
+import model.SavingsAccount;
+import model.WithdrawRule;
+import util.CommandParser;
+import util.Validator;
 
 public class MiniBank {
     public static void main(String[] args) {
@@ -16,13 +31,26 @@ public class MiniBank {
 
         System.out.println("Account balances and interest rates:");
         for (Account account : accounts) {
-            System.out.println(account + ", interest rate=" + account.interestRate() + "%");
+            System.out.println(account + ", interest rate=" + account.interestRate()
+                    + "%, yearly interest=Rs. " + account.yearlyInterest());
             if (account instanceof SavingsAccount savingsAccount) {
                 System.out.println("Savings minimum balance: " + savingsAccount.getMinBalance());
             }
         }
         System.out.println("First two accounts equal: " + accounts[0].equals(accounts[1]));
         System.out.println("First object is an Account: " + (accounts[0] instanceof Account));
+
+        WithdrawRule anonymousRule = new WithdrawRule() {
+            @Override
+            public boolean allow(Account account, long amount) {
+                return account.canWithdraw(amount);
+            }
+        };
+        WithdrawRule lambdaRule = (account, amount) -> account.canWithdraw(amount);
+        System.out.println("Withdrawal allowed (anonymous): "
+                + anonymousRule.allow(accounts[0], 100));
+        System.out.println("Withdrawal allowed (lambda): "
+                + lambdaRule.allow(accounts[0], 100));
 
         System.out.println("Validation examples:");
         System.out.println("Mobile: " + Validator.isValidMobile("9876543210")
@@ -37,7 +65,7 @@ public class MiniBank {
         Command command = CommandParser.parse("DEPOSIT AC0001 500");
         System.out.println("Parsed command: " + command.type() + ", "
                 + command.accountNumber() + ", " + command.amount());
-        System.out.println(StatementFormatter.buildStatement(accounts[0]));
+        System.out.println(buildStatement(accounts[0]));
 
         try (Scanner scanner = new Scanner(System.in)) {
             while (true) {
@@ -81,14 +109,4 @@ public class MiniBank {
             }
         }
     }
-}
-
-record BankInfo(String name, String branch) {}
-
-enum MenuOption {
-    OPEN_ACCOUNT,
-    DEPOSIT,
-    WITHDRAW,
-    TRANSFER,
-    EXIT
 }
