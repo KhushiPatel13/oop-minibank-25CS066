@@ -1,4 +1,4 @@
-public class Account {
+public abstract class Account {
     private final String accountNumber;
     private String ownerName;
     private long balance;
@@ -36,12 +36,16 @@ public class Account {
         if (amount <= 0) {
             throw new IllegalArgumentException("Withdrawal amount must be positive.");
         }
-        if (balance < amount) {
+        if (!canWithdraw(amount)) {
             return false;
         }
-        balance -= amount;
+        balance = Math.subtractExact(balance, amount);
         return true;
     }
+
+    public abstract double interestRate();
+
+    public abstract boolean canWithdraw(long amount);
 
     public String getAccountNumber() {
         return accountNumber;

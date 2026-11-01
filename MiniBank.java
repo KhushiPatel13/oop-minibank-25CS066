@@ -6,18 +6,20 @@ public class MiniBank {
         System.out.println(bankInfo);
 
         Account[] accounts = {
-            new Account("Asha Patel", 1000),
-            new Account("Ravi Shah"),
-            new Account("Neha Desai", 2500)
+            new SavingsAccount("Asha Patel", 1000, 500),
+            new CurrentAccount("Ravi Shah", 0, 500),
+            new FixedDepositAccount("Neha Desai", 2500)
         };
         accounts[0].deposit(500);
         accounts[0].withdraw(200);
         accounts[1].deposit(750);
-        accounts[2].withdraw(300);
 
-        System.out.println("Account balances:");
+        System.out.println("Account balances and interest rates:");
         for (Account account : accounts) {
-            System.out.println(account);
+            System.out.println(account + ", interest rate=" + account.interestRate() + "%");
+            if (account instanceof SavingsAccount savingsAccount) {
+                System.out.println("Savings minimum balance: " + savingsAccount.getMinBalance());
+            }
         }
         System.out.println("First two accounts equal: " + accounts[0].equals(accounts[1]));
         System.out.println("First object is an Account: " + (accounts[0] instanceof Account));
