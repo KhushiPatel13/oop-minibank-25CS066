@@ -51,6 +51,7 @@ public class MiniBank {
 
         Account processedAccount = new CurrentAccount("Batch Processing", 1000, 0);
         TransactionProcessor processor = new TransactionProcessor();
+        processor.addAccount(processedAccount);
         for (int i = 0; i < 10; i++) {
             processor.submit(new AccountTransactionTask(processedAccount, 100, true));
             processor.submit(new AccountTransactionTask(processedAccount, 50, false));
@@ -79,6 +80,19 @@ public class MiniBank {
             new CurrentAccount("Ravi Shah", 0, 500),
             new FixedDepositAccount("Neha Desai", 2500)
         };
+        AccountStore accountStore = new AccountStore();
+        for (Account account : accounts) {
+            accountStore.add(account);
+        }
+        accountStore.addTransaction("DEPOSIT AC0001 500");
+        accountStore.addTransaction("WITHDRAW AC0001 200");
+        System.out.println("Accounts sorted by balance:");
+        for (Account account : accountStore.sortedByBalance()) {
+            System.out.println(account);
+        }
+        System.out.println("Stored transaction history: "
+                + accountStore.getTransactionHistory());
+
         try {
             accounts[0].deposit(500);
             accounts[0].withdraw(200);
