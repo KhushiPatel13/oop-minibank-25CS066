@@ -1,244 +1,218 @@
 package service;
 
-import static util.StatementFormatter.buildStatement;
-
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Scanner;
 
 import exception.BankException;
-import exception.InsufficientFundsException;
-import exception.InvalidAmountException;
 import model.Account;
-import model.BankInfo;
 import model.Command;
-import model.CurrentAccount;
-import model.FixedDepositAccount;
 import model.MenuOption;
-import model.SavingsAccount;
-import model.WithdrawRule;
-import util.AnnotationValidator;
+import model.TransactionType;
 import util.CommandParser;
-import util.ReportGenerator;
 import util.StatePersister;
-import util.TransactionLog;
-import util.Validator;
 
 public class MiniBank {
+    private static final Path STATE_FILE = Path.of("data", "accounts.bin");
+    private static final Path LOG_FILE = Path.of("logs", "transactions.log");
+    private static final Path REPORT_FILE = Path.of("reports", "end-of-day-report.txt");
+
+    private MiniBank() {}
+
     public static void main(String[] args)
-            throws ReflectiveOperationException, InterruptedException, IOException,
-            ClassNotFoundException {
-        BankInfo bankInfo = new BankInfo("MiniBank", "Main Branch");
-        System.out.println(bankInfo);
-
-        Account sharedAccount = new CurrentAccount("Concurrent Demo", 0, 0);
-        int workerCount = 10;
-        int depositsPerWorker = 10_000;
-        long amountPerDeposit = 1;
-        Thread[] workers = new Thread[workerCount];
-        for (int i = 0; i < workers.length; i++) {
-            workers[i] = new Thread(
-                    new AccountWorker(sharedAccount, depositsPerWorker, amountPerDeposit),
-                    "AccountWorker-" + (i + 1));
-            workers[i].start();
-        }
-        for (Thread worker : workers) {
-            worker.join();
-        }
-        long expectedBalance = (long) workerCount * depositsPerWorker * amountPerDeposit;
-        System.out.println("Concurrent balance: Rs. " + sharedAccount.getBalance()
-                + " (expected Rs. " + expectedBalance + ")");
-
-        Account processedAccount = new CurrentAccount("Batch Processing", 1000, 0);
-        TransactionProcessor processor = new TransactionProcessor();
-        processor.addAccount(processedAccount);
-        for (int i = 0; i < 10; i++) {
-            processor.submit(new AccountTransactionTask(processedAccount, 100, true));
-            processor.submit(new AccountTransactionTask(processedAccount, 50, false));
-        }
-        processor.stop();
-        System.out.println("Managed-thread-pool balance: Rs. " + processedAccount.getBalance()
-                + " (expected Rs. 1500)");
-
-        ProducerConsumerDemo.run();
-
-        Account transferA = new CurrentAccount("Transfer A", 10_000, 0);
-        Account transferB = new CurrentAccount("Transfer B", 10_000, 0);
-        Thread transferAToB = new Thread(
-                new TransferWorker(transferA, transferB, 1000, 1), "Transfer-A-to-B");
-        Thread transferBToA = new Thread(
-                new TransferWorker(transferB, transferA, 1000, 1), "Transfer-B-to-A");
-        transferAToB.start();
-        transferBToA.start();
-        transferAToB.join();
-        transferBToA.join();
-        System.out.println("Opposing transfers completed; combined balance: Rs. "
-                + (transferA.getBalance() + transferB.getBalance()));
-
-        Account[] accounts = {
-            new SavingsAccount("Asha Patel", 1000, 500),
-            new CurrentAccount("Ravi Shah", 0, 500),
-            new FixedDepositAccount("Neha Desai", 2500)
-        };
-        AccountStore accountStore = new AccountStore();
-        for (Account account : accounts) {
-            accountStore.add(account);
-        }
-        Repository<Account> accountRepository = new Repository<>();
-        accountRepository.saveAll(accounts);
-        System.out.println("Repository lookup: "
-                + accountRepository.findById(accounts[0].getAccountNumber()));
-        System.out.println("Accounts from repository:");
-        for (Account account : accountRepository.findAll()) {
-            System.out.println(account);
-        }
-        System.out.println("Average sample value: "
-                + Repository.average(new Integer[] {100, 200, 300}));
-
-        accountStore.addTransaction("DEPOSIT AC0001 500");
-        accountStore.addTransaction("WITHDRAW AC0001 200");
-        System.out.println("Accounts sorted by balance:");
-        for (Account account : accountStore.sortedByBalance()) {
-            System.out.println(account);
-        }
-        System.out.println("Stored transaction history: "
-                + accountStore.getTransactionHistory());
-
-        try {
-            accounts[0].deposit(500);
-            accounts[0].withdraw(200);
-            accounts[1].deposit(750);
-            accounts[0].transfer(accounts[1], 100);
-        } catch (BankException exception) {
-            System.out.println("Transaction could not be completed: " + exception.getMessage());
-        } finally {
-            System.out.println("Transaction processing finished.");
-        }
-
-        Path logFile = Path.of("logs", "transactions.log");
-        TransactionLog.append(logFile, "DEPOSIT 500");
-        TransactionLog.append(logFile, "WITHDRAW 200");
-        TransactionLog.append(logFile, "DEPOSIT 750");
-        TransactionLog.append(logFile, "WITHDRAW 100");
-        TransactionLog.append(logFile, "DEPOSIT 100");
-
-        Path stateFile = Path.of("data", "accounts.bin");
-        StatePersister.save(accounts, stateFile);
-        Account[] reloadedAccounts = StatePersister.load(stateFile);
-        System.out.println("Reloaded accounts:");
-        for (Account account : reloadedAccounts) {
-            System.out.println(account);
-        }
-
-        String report = ReportGenerator.generate(
-                Path.of("logs"), Path.of("reports", "end-of-day-report.txt"));
-        System.out.println(report);
-
-        try (TransactionResource resource = new TransactionResource()) {
-            System.out.println("Transaction resource active: " + resource.isOpen());
-        }
-
-        try {
-            accounts[0].withdraw(Long.MAX_VALUE);
-        } catch (InsufficientFundsException exception) {
-            System.out.println("Withdrawal declined. Short by Rs. " + exception.getShortfall()
-                    + ".");
-        } catch (InvalidAmountException exception) {
-            System.out.println("Please enter a valid withdrawal amount.");
-        }
-
-        try {
-            accounts[0].deposit(0);
-        } catch (InvalidAmountException exception) {
-            System.out.println("Deposit declined: " + exception.getMessage());
-        }
-
-        System.out.println("Account balances and interest rates:");
-        for (Account account : accounts) {
-            System.out.println(account + ", interest rate=" + account.interestRate()
-                    + "%, yearly interest=Rs. " + account.yearlyInterest());
-            if (account instanceof SavingsAccount savingsAccount) {
-                System.out.println("Savings minimum balance: " + savingsAccount.getMinBalance());
-            }
-        }
-        System.out.println("First two accounts equal: " + accounts[0].equals(accounts[1]));
-        System.out.println("First object is an Account: " + (accounts[0] instanceof Account));
-
-        WithdrawRule anonymousRule = new WithdrawRule() {
-            @Override
-            public boolean allow(Account account, long amount) {
-                return account.canWithdraw(amount);
-            }
-        };
-        WithdrawRule lambdaRule = (account, amount) -> account.canWithdraw(amount);
-        System.out.println("Withdrawal allowed (anonymous): "
-                + anonymousRule.allow(accounts[0], 100));
-        System.out.println("Withdrawal allowed (lambda): "
-                + lambdaRule.allow(accounts[0], 100));
-
-        System.out.println("Validation examples:");
-        System.out.println("Mobile: " + Validator.isValidMobile("9876543210")
-                + " / " + Validator.isValidMobile("12345"));
-        System.out.println("Email: " + Validator.isValidEmail("asha@example.com")
-                + " / " + Validator.isValidEmail("not-an-email"));
-        System.out.println("PAN: " + Validator.isValidPan("ABCDE1234F")
-                + " / " + Validator.isValidPan("bad-pan"));
-        System.out.println("IFSC: " + Validator.isValidIfsc("SBIN0001234")
-                + " / " + Validator.isValidIfsc("bad-ifsc"));
-
-        Command command = CommandParser.parse("DEPOSIT AC0001 500");
-        System.out.println("Parsed command: " + command.type() + ", "
-                + command.accountNumber() + ", " + command.amount());
-        System.out.println(buildStatement(accounts[0]));
-
-        Account invalidAccount = new SavingsAccount("Validation sample", 100, 0);
-        var balanceField = Account.class.getDeclaredField("balance");
-        balanceField.setAccessible(true);
-        balanceField.setLong(invalidAccount, -1);
-        for (String error : AnnotationValidator.validate(invalidAccount)) {
-            System.out.println("Annotation validation error: " + error);
-        }
-
+            throws IOException, ClassNotFoundException, InterruptedException {
         try (Scanner scanner = new Scanner(System.in)) {
-            while (true) {
-                System.out.println();
-                System.out.println("1. Open account");
-                System.out.println("2. Deposit");
-                System.out.println("3. Withdraw");
-                System.out.println("4. Transfer");
-                System.out.println("5. Exit");
-                System.out.print("Choose an option: ");
+            run(scanner, STATE_FILE, LOG_FILE, REPORT_FILE);
+        }
+    }
 
-                if (!scanner.hasNextInt()) {
-                    if (!scanner.hasNext()) {
-                        System.out.println();
-                        break;
-                    }
-                    System.out.println("Please enter a number from 1 to 5.");
-                    scanner.next();
-                    continue;
-                }
+    static void run(Scanner scanner, Path stateFile, Path logFile, Path reportFile)
+            throws IOException, ClassNotFoundException, InterruptedException {
+        Repository<Account> repository = new Repository<>();
+        if (Files.exists(stateFile)) {
+            repository.saveAll(StatePersister.load(stateFile));
+        }
 
-                int selectedNumber = scanner.nextInt();
-                if (selectedNumber < 1 || selectedNumber > MenuOption.values().length) {
-                    System.out.println("Please enter a number from 1 to 5.");
-                    continue;
-                }
-
-                MenuOption choice = MenuOption.values()[selectedNumber - 1];
-                String message = switch (choice) {
-                    case OPEN_ACCOUNT -> "Open account - to be implemented in a later lab";
-                    case DEPOSIT -> "Deposit - to be implemented in a later lab";
-                    case WITHDRAW -> "Withdraw - to be implemented in a later lab";
-                    case TRANSFER -> "Transfer - to be implemented in a later lab";
-                    case EXIT -> "Goodbye!";
-                };
-                System.out.println(message);
-
-                if (choice == MenuOption.EXIT) {
-                    break;
-                }
+        BankService bankService = new BankService(repository, logFile, reportFile);
+        System.out.println("MiniBank");
+        System.out.println(repository.findAll().size() + " account(s) loaded.");
+        try {
+            runMenu(scanner, bankService);
+        } finally {
+            try {
+                bankService.saveState(stateFile);
+                System.out.println("Account data saved.");
+            } finally {
+                bankService.close();
             }
+        }
+    }
+
+    private static void runMenu(Scanner scanner, BankService bankService)
+            throws InterruptedException {
+        boolean running = true;
+        while (running) {
+            printMenu();
+            String selected = readLine(scanner, "Choose an option: ");
+            if (selected == null) {
+                break;
+            }
+
+            try {
+                int number = Integer.parseInt(selected.trim());
+                if (number < 1 || number > MenuOption.values().length) {
+                    System.out.println("Please choose an option from 1 to "
+                            + MenuOption.values().length + ".");
+                    continue;
+                }
+
+                MenuOption option = MenuOption.values()[number - 1];
+                switch (option) {
+                    case OPEN_ACCOUNT -> openAccount(scanner, bankService);
+                    case DEPOSIT -> deposit(scanner, bankService);
+                    case WITHDRAW -> withdraw(scanner, bankService);
+                    case TRANSFER -> transfer(scanner, bankService);
+                    case STATEMENT -> statement(scanner, bankService);
+                    case LIST_ACCOUNTS -> listAccounts(bankService);
+                    case PROCESS_BATCH -> processBatch(scanner, bankService);
+                    case REPORT -> System.out.println(bankService.generateReport());
+                    case EXIT -> {
+                        System.out.println("Goodbye!");
+                        running = false;
+                    }
+                }
+            } catch (BankException | IOException exception) {
+                System.out.println("Operation failed: " + exception.getMessage());
+            } catch (IllegalArgumentException exception) {
+                System.out.println("Invalid input: " + exception.getMessage());
+            }
+        }
+    }
+
+    private static void printMenu() {
+        System.out.println();
+        System.out.println("1. Open account");
+        System.out.println("2. Deposit");
+        System.out.println("3. Withdraw");
+        System.out.println("4. Transfer");
+        System.out.println("5. Account statement");
+        System.out.println("6. List accounts");
+        System.out.println("7. Process transaction batch");
+        System.out.println("8. End-of-day report");
+        System.out.println("9. Exit");
+    }
+
+    private static void openAccount(Scanner scanner, BankService bankService)
+            throws BankException {
+        String name = readLine(scanner, "Customer name: ");
+        String email = readLine(scanner, "Email: ");
+        String mobile = readLine(scanner, "10-digit mobile: ");
+        String openingBalance = readLine(scanner, "Opening balance in rupees: ");
+        if (name == null || email == null || mobile == null || openingBalance == null) {
+            return;
+        }
+
+        Account account = bankService.openAccount(
+                name, email, mobile, parseAmount(openingBalance));
+        System.out.println("Account opened: " + account.getAccountNumber());
+    }
+
+    private static void deposit(Scanner scanner, BankService bankService)
+            throws BankException, IOException {
+        String accountNumber = readLine(scanner, "Account number: ");
+        String amount = readLine(scanner, "Deposit amount: ");
+        if (accountNumber == null || amount == null) {
+            return;
+        }
+        bankService.deposit(accountNumber.trim(), parseAmount(amount));
+        System.out.println("Deposit completed.");
+    }
+
+    private static void withdraw(Scanner scanner, BankService bankService)
+            throws BankException, IOException {
+        String accountNumber = readLine(scanner, "Account number: ");
+        String amount = readLine(scanner, "Withdrawal amount: ");
+        if (accountNumber == null || amount == null) {
+            return;
+        }
+        bankService.withdraw(accountNumber.trim(), parseAmount(amount));
+        System.out.println("Withdrawal completed.");
+    }
+
+    private static void transfer(Scanner scanner, BankService bankService)
+            throws BankException, IOException {
+        String from = readLine(scanner, "From account number: ");
+        String to = readLine(scanner, "To account number: ");
+        String amount = readLine(scanner, "Transfer amount: ");
+        if (from == null || to == null || amount == null) {
+            return;
+        }
+        bankService.transfer(from.trim(), to.trim(), parseAmount(amount));
+        System.out.println("Transfer completed.");
+    }
+
+    private static void statement(Scanner scanner, BankService bankService)
+            throws BankException {
+        String accountNumber = readLine(scanner, "Account number: ");
+        if (accountNumber != null) {
+            System.out.println(bankService.statement(accountNumber.trim()));
+        }
+    }
+
+    private static void listAccounts(BankService bankService) {
+        ArrayList<Account> accounts = bankService.listAccounts();
+        if (accounts.isEmpty()) {
+            System.out.println("No accounts are open.");
+            return;
+        }
+        for (Account account : accounts) {
+            System.out.println(account);
+        }
+    }
+
+    private static void processBatch(Scanner scanner, BankService bankService)
+            throws BankException, IOException, InterruptedException {
+        String countInput = readLine(scanner, "Number of transactions: ");
+        if (countInput == null) {
+            return;
+        }
+        int count = Integer.parseInt(countInput.trim());
+        if (count < 1 || count > 1000) {
+            throw new IllegalArgumentException("Enter a batch size from 1 to 1000.");
+        }
+
+        List<Command> commands = new ArrayList<>(count);
+        for (int i = 0; i < count; i++) {
+            String line = readLine(scanner, "Transaction " + (i + 1)
+                    + " (DEPOSIT|WITHDRAW account amount): ");
+            if (line == null) {
+                return;
+            }
+            Command command = CommandParser.parse(line);
+            if (command.type() == TransactionType.TRANSFER) {
+                throw new IllegalArgumentException(
+                        "Batch transfers are not supported; use the transfer option.");
+            }
+            commands.add(command);
+        }
+
+        bankService.processBatch(commands);
+        System.out.println(commands.size() + " transaction(s) processed.");
+    }
+
+    private static String readLine(Scanner scanner, String prompt) {
+        System.out.print(prompt);
+        return scanner.hasNextLine() ? scanner.nextLine() : null;
+    }
+
+    private static long parseAmount(String input) {
+        try {
+            return Long.parseLong(input.trim());
+        } catch (NumberFormatException exception) {
+            throw new IllegalArgumentException("Amount must be a whole number.", exception);
         }
     }
 }

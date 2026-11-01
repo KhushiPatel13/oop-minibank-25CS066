@@ -9,7 +9,7 @@ import java.nio.file.StandardOpenOption;
 public class TransactionLog {
     private TransactionLog() {}
 
-    public static void append(Path file, String line) throws IOException {
+    public static synchronized void append(Path file, String line) throws IOException {
         if (file == null || line == null || line.isBlank()
                 || line.indexOf('\n') >= 0 || line.indexOf('\r') >= 0) {
             throw new IllegalArgumentException("A log path and a single non-blank line are required.");

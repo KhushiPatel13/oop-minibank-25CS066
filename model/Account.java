@@ -40,8 +40,21 @@ public abstract class Account implements Transactable, InterestBearing, Serializ
         this(ownerName, 0);
     }
 
-    private static String generateAccountNumber() {
+    private static synchronized String generateAccountNumber() {
         return String.format("AC%04d", ++accountCounter);
+    }
+
+    public static synchronized void reserveAccountNumber(String accountNumber) {
+        if (accountNumber == null || !accountNumber.matches("AC\\d+")) {
+            return;
+        }
+        try {
+            accountCounter = Math.max(accountCounter,
+                    Long.parseLong(accountNumber.substring(2)));
+        } catch (NumberFormatException exception) {
+            throw new IllegalArgumentException("Invalid account number: " + accountNumber,
+                    exception);
+        }
     }
 
     @Override

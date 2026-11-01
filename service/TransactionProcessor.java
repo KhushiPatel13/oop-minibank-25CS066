@@ -1,6 +1,7 @@
 package service;
 
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Future;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -26,8 +27,8 @@ public class TransactionProcessor {
         return accounts.get(accountNumber);
     }
 
-    public void submit(Runnable task) {
-        executor.execute(task);
+    public Future<?> submit(Runnable task) {
+        return executor.submit(task);
     }
 
     public void stop() throws InterruptedException {
