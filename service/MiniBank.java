@@ -2,6 +2,8 @@ package service;
 
 import static util.StatementFormatter.buildStatement;
 
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.Scanner;
 
 import exception.BankException;
@@ -17,11 +19,15 @@ import model.SavingsAccount;
 import model.WithdrawRule;
 import util.AnnotationValidator;
 import util.CommandParser;
+import util.ReportGenerator;
+import util.StatePersister;
+import util.TransactionLog;
 import util.Validator;
 
 public class MiniBank {
     public static void main(String[] args)
-            throws ReflectiveOperationException, InterruptedException {
+            throws ReflectiveOperationException, InterruptedException, IOException,
+            ClassNotFoundException {
         BankInfo bankInfo = new BankInfo("MiniBank", "Main Branch");
         System.out.println(bankInfo);
 
@@ -83,6 +89,25 @@ public class MiniBank {
         } finally {
             System.out.println("Transaction processing finished.");
         }
+
+        Path logFile = Path.of("logs", "transactions.log");
+        TransactionLog.append(logFile, "DEPOSIT 500");
+        TransactionLog.append(logFile, "WITHDRAW 200");
+        TransactionLog.append(logFile, "DEPOSIT 750");
+        TransactionLog.append(logFile, "WITHDRAW 100");
+        TransactionLog.append(logFile, "DEPOSIT 100");
+
+        Path stateFile = Path.of("data", "accounts.bin");
+        StatePersister.save(accounts, stateFile);
+        Account[] reloadedAccounts = StatePersister.load(stateFile);
+        System.out.println("Reloaded accounts:");
+        for (Account account : reloadedAccounts) {
+            System.out.println(account);
+        }
+
+        String report = ReportGenerator.generate(
+                Path.of("logs"), Path.of("reports", "end-of-day-report.txt"));
+        System.out.println(report);
 
         try (TransactionResource resource = new TransactionResource()) {
             System.out.println("Transaction resource active: " + resource.isOpen());

@@ -1,6 +1,11 @@
 package model;
 
+import java.io.Serial;
+
 public class SavingsAccount extends Account {
+    @Serial
+    private static final long serialVersionUID = 1L;
+
     private final long minBalance;
 
     public SavingsAccount(String ownerName, long openingBalance, long minBalance) {
