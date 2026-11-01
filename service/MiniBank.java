@@ -84,6 +84,17 @@ public class MiniBank {
         for (Account account : accounts) {
             accountStore.add(account);
         }
+        Repository<Account> accountRepository = new Repository<>();
+        accountRepository.saveAll(accounts);
+        System.out.println("Repository lookup: "
+                + accountRepository.findById(accounts[0].getAccountNumber()));
+        System.out.println("Accounts from repository:");
+        for (Account account : accountRepository.findAll()) {
+            System.out.println(account);
+        }
+        System.out.println("Average sample value: "
+                + Repository.average(new Integer[] {100, 200, 300}));
+
         accountStore.addTransaction("DEPOSIT AC0001 500");
         accountStore.addTransaction("WITHDRAW AC0001 200");
         System.out.println("Accounts sorted by balance:");
