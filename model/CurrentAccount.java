@@ -23,13 +23,17 @@ public class CurrentAccount extends Account {
 
     @Override
     public boolean canWithdraw(long amount) {
-        if (amount <= 0) {
-            return false;
-        }
+        return amount > 0 && amount <= availableForWithdrawal();
+    }
+
+    @Override
+    protected long availableForWithdrawal() {
         long balance = getBalance();
-        if (balance < 0) {
-            return amount <= overdraftLimit + balance;
+        if (balance >= 0) {
+            return balance > Long.MAX_VALUE - overdraftLimit
+                    ? Long.MAX_VALUE
+                    : balance + overdraftLimit;
         }
-        return amount <= balance || amount - balance <= overdraftLimit;
+        return balance <= -overdraftLimit ? 0 : overdraftLimit + balance;
     }
 }

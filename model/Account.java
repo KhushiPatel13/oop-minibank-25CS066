@@ -1,5 +1,9 @@
 package model;
 
+import exception.AccountNotFoundException;
+import exception.BankException;
+import exception.InsufficientFundsException;
+import exception.InvalidAmountException;
 import model.annotation.Id;
 import model.annotation.MaxLength;
 import model.annotation.Positive;
@@ -35,28 +39,57 @@ public abstract class Account implements Transactable, InterestBearing {
     }
 
     @Override
-    public void deposit(long amount) {
+    public void deposit(long amount) throws InvalidAmountException {
         if (amount <= 0) {
-            throw new IllegalArgumentException("Deposit amount must be positive.");
+            throw new InvalidAmountException("Deposit amount must be positive.");
         }
         balance = Math.addExact(balance, amount);
     }
 
     @Override
-    public boolean withdraw(long amount) {
+    public boolean withdraw(long amount)
+            throws InsufficientFundsException, InvalidAmountException {
         if (amount <= 0) {
-            throw new IllegalArgumentException("Withdrawal amount must be positive.");
+            throw new InvalidAmountException("Withdrawal amount must be positive.");
         }
-        if (!canWithdraw(amount)) {
-            return false;
+        long available = availableForWithdrawal();
+        if (amount > available) {
+            throw new InsufficientFundsException(
+                    "Insufficient funds for this withdrawal.", amount - available);
         }
         balance = Math.subtractExact(balance, amount);
         return true;
     }
 
+    public void transfer(Account to, long amount) throws BankException {
+        if (amount <= 0) {
+            throw new InvalidAmountException("Transfer amount must be positive.");
+        }
+
+        boolean debited = false;
+        boolean completed = false;
+        try {
+            if (to == null) {
+                throw new AccountNotFoundException("Destination account was not found.");
+            }
+            withdraw(amount);
+            debited = true;
+            to.deposit(amount);
+            completed = true;
+        } catch (BankException exception) {
+            throw exception;
+        } finally {
+            if (debited && !completed) {
+                balance = Math.addExact(balance, amount);
+            }
+        }
+    }
+
     public abstract double interestRate();
 
     public abstract boolean canWithdraw(long amount);
+
+    protected abstract long availableForWithdrawal();
 
     public String getAccountNumber() {
         return accountNumber;

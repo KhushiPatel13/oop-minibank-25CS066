@@ -4,6 +4,9 @@ import static util.StatementFormatter.buildStatement;
 
 import java.util.Scanner;
 
+import exception.BankException;
+import exception.InsufficientFundsException;
+import exception.InvalidAmountException;
 import model.Account;
 import model.BankInfo;
 import model.Command;
@@ -26,9 +29,35 @@ public class MiniBank {
             new CurrentAccount("Ravi Shah", 0, 500),
             new FixedDepositAccount("Neha Desai", 2500)
         };
-        accounts[0].deposit(500);
-        accounts[0].withdraw(200);
-        accounts[1].deposit(750);
+        try {
+            accounts[0].deposit(500);
+            accounts[0].withdraw(200);
+            accounts[1].deposit(750);
+            accounts[0].transfer(accounts[1], 100);
+        } catch (BankException exception) {
+            System.out.println("Transaction could not be completed: " + exception.getMessage());
+        } finally {
+            System.out.println("Transaction processing finished.");
+        }
+
+        try (TransactionResource resource = new TransactionResource()) {
+            System.out.println("Transaction resource active: " + resource.isOpen());
+        }
+
+        try {
+            accounts[0].withdraw(Long.MAX_VALUE);
+        } catch (InsufficientFundsException exception) {
+            System.out.println("Withdrawal declined. Short by Rs. " + exception.getShortfall()
+                    + ".");
+        } catch (InvalidAmountException exception) {
+            System.out.println("Please enter a valid withdrawal amount.");
+        }
+
+        try {
+            accounts[0].deposit(0);
+        } catch (InvalidAmountException exception) {
+            System.out.println("Deposit declined: " + exception.getMessage());
+        }
 
         System.out.println("Account balances and interest rates:");
         for (Account account : accounts) {
