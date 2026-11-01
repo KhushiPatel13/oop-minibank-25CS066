@@ -17,8 +17,10 @@ public class MiniBank {
 
         System.out.println("Account balances:");
         for (Account account : accounts) {
-            System.out.println(account.getOwnerName() + ": Rs. " + account.getBalance());
+            System.out.println(account);
         }
+        System.out.println("First two accounts equal: " + accounts[0].equals(accounts[1]));
+        System.out.println("First object is an Account: " + (accounts[0] instanceof Account));
 
         try (Scanner scanner = new Scanner(System.in)) {
             while (true) {
