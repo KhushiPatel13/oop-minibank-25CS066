@@ -65,22 +65,31 @@ public abstract class Account implements Transactable, InterestBearing {
         if (amount <= 0) {
             throw new InvalidAmountException("Transfer amount must be positive.");
         }
+        if (to == null) {
+            throw new AccountNotFoundException("Destination account was not found.");
+        }
+        if (to == this) {
+            return;
+        }
 
-        boolean debited = false;
-        boolean completed = false;
-        try {
-            if (to == null) {
-                throw new AccountNotFoundException("Destination account was not found.");
-            }
-            withdraw(amount);
-            debited = true;
-            to.deposit(amount);
-            completed = true;
-        } catch (BankException exception) {
-            throw exception;
-        } finally {
-            if (debited && !completed) {
-                balance = Math.addExact(balance, amount);
+        Account firstLock = accountNumber.compareTo(to.accountNumber) < 0 ? this : to;
+        Account secondLock = firstLock == this ? to : this;
+        synchronized (firstLock) {
+            synchronized (secondLock) {
+                boolean debited = false;
+                boolean completed = false;
+                try {
+                    withdraw(amount);
+                    debited = true;
+                    to.deposit(amount);
+                    completed = true;
+                } catch (BankException | RuntimeException exception) {
+                    throw exception;
+                } finally {
+                    if (debited && !completed) {
+                        balance = Math.addExact(balance, amount);
+                    }
+                }
             }
         }
     }

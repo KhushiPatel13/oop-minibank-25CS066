@@ -43,6 +43,31 @@ public class MiniBank {
         System.out.println("Concurrent balance: Rs. " + sharedAccount.getBalance()
                 + " (expected Rs. " + expectedBalance + ")");
 
+        Account processedAccount = new CurrentAccount("Batch Processing", 1000, 0);
+        TransactionProcessor processor = new TransactionProcessor();
+        for (int i = 0; i < 10; i++) {
+            processor.submit(new AccountTransactionTask(processedAccount, 100, true));
+            processor.submit(new AccountTransactionTask(processedAccount, 50, false));
+        }
+        processor.stop();
+        System.out.println("Managed-thread-pool balance: Rs. " + processedAccount.getBalance()
+                + " (expected Rs. 1500)");
+
+        ProducerConsumerDemo.run();
+
+        Account transferA = new CurrentAccount("Transfer A", 10_000, 0);
+        Account transferB = new CurrentAccount("Transfer B", 10_000, 0);
+        Thread transferAToB = new Thread(
+                new TransferWorker(transferA, transferB, 1000, 1), "Transfer-A-to-B");
+        Thread transferBToA = new Thread(
+                new TransferWorker(transferB, transferA, 1000, 1), "Transfer-B-to-A");
+        transferAToB.start();
+        transferBToA.start();
+        transferAToB.join();
+        transferBToA.join();
+        System.out.println("Opposing transfers completed; combined balance: Rs. "
+                + (transferA.getBalance() + transferB.getBalance()));
+
         Account[] accounts = {
             new SavingsAccount("Asha Patel", 1000, 500),
             new CurrentAccount("Ravi Shah", 0, 500),
